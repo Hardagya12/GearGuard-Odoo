@@ -1,0 +1,131 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum Role {
+  MANAGER
+  TECHNICIAN
+  EMPLOYEE
+}
+
+enum EquipmentStatus {
+  ACTIVE
+  UNDER_MAINTENANCE
+  SCRAPPED
+}
+
+enum MaintenanceType {
+  CORRECTIVE
+  PREVENTIVE
+}
+
+enum RequestStage {
+  NEW
+  IN_PROGRESS
+  REPAIRED
+  SCRAP
+}
+
+enum RequestPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// Models
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(EMPLOYEE)
+  
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id])
+  
+  assignedEquipment Equipment[] 
+  assignedRequests  MaintenanceRequest[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  members   User[]
+  maintainedEquipment Equipment[]
+  requests  MaintenanceRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Equipment {
+  id                String          @id @default(cuid())
+  name              String
+  serialNumber      String          @unique
+  description       String?
+  
+  department        String?         // e.g. "Production"
+  location          String?         // e.g. "Floor 1"
+  
+  purchaseDate      DateTime?
+  warrantyExpiration DateTime?
+  
+  status            EquipmentStatus @default(ACTIVE)
+
+  assignedToUserId  String?
+  assignedToUser    User?           @relation(fields: [assignedToUserId], references: [id])
+
+  maintenanceTeamId String?
+  maintenanceTeam   Team?           @relation(fields: [maintenanceTeamId], references: [id])
+
+  requests          MaintenanceRequest[]
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([serialNumber])
+  @@index([department])
+}
+
+model MaintenanceRequest {
+  id             String          @id @default(cuid())
+  subject        String
+  description    String?
+  
+  type           MaintenanceType
+  priority       RequestPriority @default(MEDIUM)
+  stage          RequestStage    @default(NEW)
+  
+  equipmentId    String
+  equipment      Equipment       @relation(fields: [equipmentId], references: [id])
+  
+  teamId         String?
+  team           Team?           @relation(fields: [teamId], references: [id])
+  
+  technicianId   String?
+  technician     User?           @relation(fields: [technicianId], references: [id])
+  
+  scheduledDate  DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  durationHours  Float?
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([stage])
+  @@index([equipmentId])
+  @@index([technicianId])
+}
