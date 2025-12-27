@@ -92,7 +92,17 @@ export async function updateRequestStage(id, stage) {
             },
         });
         
+        // If stage is SCRAP, update Equipment Status to SCRAPPED
+        if (stage === 'SCRAP') {
+            await prisma.equipment.update({
+                where: { id: request.equipmentId }, // Need to fetch equipmentId first? update() returns the updated record so it's too late if we need 'select' but update() takes 'where'
+                                                    // wait, request object returned by prisma.update includes all scalars by default, so equipmentId IS there.
+                data: { status: 'SCRAPPED' }
+            });
+        }
+        
         revalidatePath('/maintenance');
+        revalidatePath('/equipment'); // Revalidate equipment list too
         return { success: true, data: request };
     } catch (error) {
         console.error('Failed to update request stage:', error);

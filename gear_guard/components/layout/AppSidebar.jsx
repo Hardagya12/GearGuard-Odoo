@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Wrench, Users, Settings, Briefcase, LogOut } from 'lucide-react';
+import { LayoutDashboard, Wrench, Users, Settings, Briefcase, LogOut, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logout } from '@/server/actions/auth';
 import { useEffect, useState } from 'react';
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Equipment', href: '/equipment', icon: Wrench },
   { name: 'Maintenance', href: '/maintenance', icon: Briefcase },
+  { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Teams', href: '/teams', icon: Users, role: ['MANAGER'] }, // Only Manager sees Teams
 ];
 
