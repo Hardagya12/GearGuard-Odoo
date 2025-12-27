@@ -109,3 +109,63 @@ export async function updateRequestStage(id, stage) {
         return { success: false, error: 'Failed to update request stage' };
     }
 }
+
+/**
+ * Get Dashboard Statistics
+ */
+export async function getDashboardStats() {
+  try {
+    const [teamData, typeData] = await Promise.all([
+      // 1. Group by Team
+      prisma.maintenanceRequest.groupBy({
+        by: ['teamId'],
+        _count: {
+          id: true
+        },
+        where: { stage: { not: 'REPAIRED' } } // Only active items
+      }),
+
+      // 2. Group by Type (Preventive vs Corrective)
+      prisma.maintenanceRequest.groupBy({
+        by: ['type'],
+        _count: {
+          id: true
+        }
+      })
+    ]);
+
+    // Fetch team names manually because groupBy doesn't support relation includes
+    const teamIds = teamData.map(t => t.teamId).filter(Boolean);
+    const teams = await prisma.team.findMany({
+      where: { id: { in: teamIds } },
+      select: { id: true, name: true }
+    });
+
+    // Format Team Data
+    const formattedTeamData = teamData.map(t => {
+      const team = teams.find(tm => tm.id === t.teamId);
+      return {
+        name: team ? team.name : 'Unassigned',
+        count: t._count.id
+      };
+    });
+
+    // Format Type Data
+    const formattedTypeData = typeData.map(t => ({
+      name: t.type,
+      value: t._count.id
+    }));
+
+    return { 
+      success: true, 
+      data: {
+        teamStats: formattedTeamData,
+        typeStats: formattedTypeData
+      }
+    };
+
+  } catch (error) {
+    console.error('Failed to get dashboard stats:', error);
+    return { success: false, error: 'Failed' };
+  }
+}
