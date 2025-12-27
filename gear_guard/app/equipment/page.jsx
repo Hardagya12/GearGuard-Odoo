@@ -1,9 +1,12 @@
 
+
 import { AppHeader } from '@/components/layout/AppHeader';
 import { getEquipmentList } from '@/server/actions/equipment';
 import { getTeams } from '@/server/actions/teams';
 import { EquipmentActions } from '@/components/equipment/EquipmentActions';
 import { Filter } from 'lucide-react';
+import Link from 'next/link';
+
 
 export default async function EquipmentPage() {
   const [equipmentResult, teamsResult] = await Promise.all([
@@ -49,8 +52,12 @@ export default async function EquipmentPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                     {equipmentList.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50 transition-colors cursor-pointer text-gray-700">
-                            <td className="px-6 py-4 font-medium text-gray-900">{item.name}</td>
+                        <tr key={item.id} className="hover:bg-purple-50 transition-colors cursor-pointer text-gray-700">
+                            <td className="px-6 py-4">
+                                <Link href={`/equipment/${item.id}`} className="font-medium text-brand hover:text-brand-dark transition-colors">
+                                    {item.name}
+                                </Link>
+                            </td>
                             <td className="px-6 py-4">{item.serialNumber}</td>
                             <td className="px-6 py-4">
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">

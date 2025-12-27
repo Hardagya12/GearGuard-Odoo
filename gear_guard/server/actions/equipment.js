@@ -87,3 +87,42 @@ export async function updateEquipment(id, data) {
         return { success: false, error: 'Failed to update equipment' };
     }
 }
+
+/**
+ * Get single equipment with all details and related requests
+ */
+export async function getEquipmentById(id) {
+  try {
+    const equipment = await prisma.equipment.findUnique({
+      where: { id },
+      include: {
+        maintenanceTeam: {
+          select: { id: true, name: true },
+        },
+        assignedToUser: {
+          select: { id: true, name: true, email: true },
+        },
+        requests: {
+          select: {
+            id: true,
+            subject: true,
+            type: true,
+            stage: true,
+            priority: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!equipment) {
+      return { success: false, error: 'Equipment not found' };
+    }
+
+    return { success: true, data: equipment };
+  } catch (error) {
+    console.error('Failed to get equipment:', error);
+    return { success: false, error: 'Failed to fetch equipment details' };
+  }
+}
