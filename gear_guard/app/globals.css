@@ -1,26 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f8f9fa; /* Light Gray Odoo Background */
   --foreground: #171717;
+  
+  /* Odoo Inspired Purple Palette */
+  --odoo-purple: #714B67;
+  --odoo-purple-dark: #5a3d54;
+  --odoo-purple-light: #9d7c94;
+  
+  /* Accent Colors */
+  --odoo-teal: #017e84;
+  --odoo-orange: #f0ad4e;
+  
+  --card-bg: #ffffff;
+  --border-color: #e5e7eb;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand: var(--odoo-purple);
+  --color-brand-dark: var(--odoo-purple-dark);
+  --color-brand-light: var(--odoo-purple-light);
+  --color-accent: var(--odoo-teal);
+  
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
