@@ -3,7 +3,8 @@
 
 import { useState } from 'react';
 import { updateRequestStage } from '@/server/actions/requests';
-import { Wrench, Clock, CheckCircle, Trash2 } from 'lucide-react';
+import { Wrench, Clock, CheckCircle, Trash2, Calendar, AlertTriangle } from 'lucide-react';
+import { format, isPast, isToday } from 'date-fns';
 
 const STAGES = [
   { id: 'NEW', label: 'New', icon: Clock, color: 'bg-purple-50 border-purple-200' },
@@ -71,16 +72,49 @@ function RequestCard({ request, onStageChange, stages }) {
     CRITICAL: 'bg-red-100 text-red-700',
   };
 
+  // Logic to determine "Overdue"
+  // If scheduledDate is in the past AND stage is not 'REPAIRED' or 'SCRAP'
+  const isOverdue = request.scheduledDate 
+    && isPast(new Date(request.scheduledDate)) 
+    && !isToday(new Date(request.scheduledDate))
+    && request.stage !== 'REPAIRED' 
+    && request.stage !== 'SCRAP';
+
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+    <div className={`bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative ${isOverdue ? 'border-l-4 border-l-red-500' : 'border-gray-200'}`}>
+      
+      {/* Overdue Badge */}
+      {isOverdue && (
+          <div className="absolute top-2 right-2 flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
+              <AlertTriangle className="w-3 h-3" />
+              OVERDUE
+          </div>
+      )}
+
       {/* Request Title */}
-      <h4 className="font-semibold text-sm text-gray-900 mb-2">{request.subject}</h4>
+      <h4 className="font-semibold text-sm text-gray-900 mb-2 truncate pr-16">{request.subject}</h4>
       
       {/* Equipment Info */}
       <div className="text-xs text-gray-500 mb-3">
         <span className="font-medium text-brand">
           {request.equipment?.name || 'Unknown Equipment'}
         </span>
+      </div>
+
+      {/* Dates & Duration */}
+      <div className="flex flex-wrap gap-2 text-[10px] text-gray-500 mb-3">
+         {request.scheduledDate && (
+             <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-500 font-semibold' : ''}`}>
+                 <Calendar className="w-3 h-3" />
+                 {format(new Date(request.scheduledDate), 'MMM d')}
+             </div>
+         )}
+         {request.durationHours > 0 && (
+             <div className="flex items-center gap-1 text-blue-600 font-medium">
+                 <Clock className="w-3 h-3" />
+                 {request.durationHours}h
+             </div>
+         )}
       </div>
 
       {/* Metadata */}
@@ -90,7 +124,9 @@ function RequestCard({ request, onStageChange, stages }) {
         </span>
         
         {request.technician && (
-          <span className="text-gray-500">{request.technician.name}</span>
+          <span className="text-gray-500" title={request.technician.email}>
+              {request.technician.name}
+          </span>
         )}
       </div>
 
