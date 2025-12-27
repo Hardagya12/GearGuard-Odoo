@@ -6,7 +6,8 @@ import { getTeams } from '@/server/actions/teams';
 import { KanbanBoard } from '@/components/maintenance/KanbanBoard';
 import { CreateRequestButton } from '@/components/maintenance/CreateRequestButton';
 
-export default async function MaintenancePage({ searchParams }) {
+export default async function MaintenancePage(props) {
+  const searchParams = await props.searchParams;
   const filters = {
     equipmentId: searchParams?.equipmentId,
   };

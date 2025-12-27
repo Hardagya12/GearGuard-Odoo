@@ -1,201 +1,400 @@
-
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const bcrypt = require('bcryptjs');
 
 async function main() {
-  console.log('🌱 Start seeding extensive data...');
-
-  // --- CONSTANTS & HELPERS ---
-  const DEPARTMENTS = ['Production', 'Logistics', 'HR', 'IT', 'Sales', 'Warehousing', 'R&D'];
-  const LOCATIONS = ['Floor 1 - Zone A', 'Floor 1 - Zone B', 'Floor 2 - Server Room', 'Warehouse Bay 3', 'Office Block C', 'Lab 1'];
+  console.log('🌱 Starting EXTENSIVE database seed...');
   
-  const TEAMS_DATA = [
-      { name: 'Mechanics', type: 'Heavy Machinery' },
-      { name: 'IT Support', type: 'Computers & Networks' },
-      { name: 'Electrical', type: 'Power & Wiring' },
-      { name: 'Facility', type: 'Building Infrastructure' }
-  ];
+  // Delete existing data (fresh start)
+  console.log('🗑️  Clearing existing data...');
+  await prisma.maintenanceRequest.deleteMany({});
+  await prisma.equipment.deleteMany({});
+  await prisma.user.deleteMany({});
+  await prisma.team.deleteMany({});
+  console.log('✅ Cleared existing data');
 
-  const MACHINE_TYPES = {
-      'Mechanics': ['CNC Machine', 'Forklift', 'Conveyor Belt', 'Injection Molder', 'Hydraulic Press'],
-      'IT Support': ['Server Rack', 'Office Laptop', 'Network Switch', 'Printer', 'Projector'],
-      'Electrical': ['Main Breaker', 'Generator', 'Transformer', 'Lighting Control Panel'],
-      'Facility': ['HVAC Unit', 'Automatic Door', 'Plumbing System', 'Fire Alarm']
-  };
-
-  const ISSUES = {
-      'CORRECTIVE': ['Not starting', 'Leaking fluid', 'Strange noise', 'Overheating', 'Error Code 505', 'Broken Screen', 'Power Failure'],
-      'PREVENTIVE': ['Annual Service', 'Filter Change', 'Oil Change', 'Firmware Update', 'Safety Inspection', 'Calibration']
-  };
-
-  function random(arr) {
-      return arr[Math.floor(Math.random() * arr.length)];
-  }
-
-  function randomDate(start, end) {
-      return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
-  }
-
-  // --- 1. TEAMS ---
-  const teams = {};
-  for (const t of TEAMS_DATA) {
-      teams[t.name] = await prisma.team.upsert({
-          where: { name: t.name },
-          update: {},
-          create: { name: t.name },
-      });
-      console.log(`✅ Team: ${t.name}`);
-  }
-
-  // --- 2. USERS (Core + Random) ---
   const password = await bcrypt.hash('password123', 10);
-  
-  // Admin
-  await prisma.user.upsert({
-      where: { email: 'admin@gearguard.com' },
-      update: { role: 'MANAGER', password },
-      create: {
-          email: 'admin@gearguard.com',
-          name: 'Arthur Admin',
-          role: 'MANAGER',
-          password
-      }
-  });
 
-  // Technicians
-  const technicians = [];
-  const techData = [
-      { name: 'Alice Johnson', email: 'alice@gearguard.com', team: 'Mechanics' },
-      { name: 'Bob Smith', email: 'bob@gearguard.com', team: 'Mechanics' },
-      { name: 'Eve Operator', email: 'eve@gearguard.com', team: 'IT Support' },
-      { name: 'Charlie Spark', email: 'charlie@gearguard.com', team: 'Electrical' },
-      { name: 'Dave Fixit', email: 'dave@gearguard.com', team: 'Facility' },
-      { name: 'Frank Net', email: 'frank@gearguard.com', team: 'IT Support' },
-      { name: 'Grace Gears', email: 'grace@gearguard.com', team: 'Mechanics' }
+  // ========== CREATE TEAMS ==========
+  const mechanics = await prisma.team.create({ data: { name: 'Mechanics' } });
+  const itSupport = await prisma.team.create({ data: { name: 'IT Support' } });
+  const electrical = await prisma.team.create({ data: { name: 'Electrical' } });
+  const facility = await prisma.team.create({ data: { name: 'Facility' } });
+  console.log('✅ Created 4 teams');
+
+  // ========== CREATE USERS ==========
+  const users = [];
+  
+  // Manager
+  const admin = await prisma.user.create({
+    data: { email: 'admin@gearguard.com', name: 'Admin Manager', password, role: 'MANAGER' }
+  });
+  users.push(admin);
+
+  // Mechanics team (5 technicians)
+  const mechanicsTechs = [
+    { email: 'alice@gearguard.com', name: 'Alice Johnson' },
+    { email: 'bob@gearguard.com', name: 'Bob Smith' },
+    { email: 'carlos@gearguard.com', name: 'Carlos Rodriguez' },
+    { email: 'diana@gearguard.com', name: 'Diana Martinez' },
+    { email: 'frank@gearguard.com', name: 'Frank Wilson' }
+  ];
+  
+  for (const tech of mechanicsTechs) {
+    const user = await prisma.user.create({
+      data: { ...tech, password, role: 'TECHNICIAN', teamId: mechanics.id }
+    });
+    users.push(user);
+  }
+
+  // IT Support team (4 technicians)
+  const itTechs = [
+    { email: 'eve@gearguard.com', name: 'Eve Operator' },
+    { email: 'grace@gearguard.com', name: 'Grace Harper' },
+    { email: 'henry@gearguard.com', name: 'Henry Chen' },
+    { email: 'iris@gearguard.com', name: 'Iris Patel' }
+  ];
+  
+  for (const tech of itTechs) {
+    const user = await prisma.user.create({
+      data: { ...tech, password, role: 'TECHNICIAN', teamId: itSupport.id }
+    });
+    users.push(user);
+  }
+
+  // Electrical team (3 technicians)
+  const electricalTechs = [
+    { email: 'charlie@gearguard.com', name: 'Charlie Spark' },
+    { email: 'jade@gearguard.com', name: 'Jade Thompson' },
+    { email: 'kyle@gearguard.com', name: 'Kyle Anderson' }
+  ];
+  
+  for (const tech of electricalTechs) {
+    const user = await prisma.user.create({
+      data: { ...tech, password, role: 'TECHNICIAN', teamId: electrical.id }
+    });
+    users.push(user);
+  }
+
+  // Facility team (3 technicians)
+  const facilityTechs = [
+    { email: 'dave@gearguard.com', name: 'Dave Fixit' },
+    { email: 'lisa@gearguard.com', name: 'Lisa Brown' },
+    { email: 'mike@gearguard.com', name: 'Mike Taylor' }
+  ];
+  
+  for (const tech of facilityTechs) {
+    const user = await prisma.user.create({
+      data: { ...tech, password, role: 'TECHNICIAN', teamId: facility.id }
+    });
+    users.push(user);
+  }
+
+  console.log(`✅ Created ${users.length} users (1 Manager + ${users.length - 1} Technicians)`);
+
+  // ========== CREATE EQUIPMENT ==========
+  const equipment = [];
+  const departments = ['Production', 'Logistics', 'HR', 'IT', 'Sales', 'Warehousing', 'R&D'];
+  const locations = ['Floor 1 - Zone A', 'Floor 1 - Zone B', 'Floor 2 - Zone C', 'Floor 3 - Office', 'Warehouse Bay 1', 'Warehouse Bay 2', 'Basement', 'Rooftop'];
+
+  // Mechanics equipment (40 items)
+  const mechanicsEquipment = [
+    'CNC Machine', 'Forklift', 'Conveyor Belt', 'Injection Molder', 
+    'Hydraulic Press', 'Lathe', 'Milling Machine', 'Grinder'
+  ];
+  
+  for (let i = 1; i <= 40; i++) {
+    const type = mechanicsEquipment[i % mechanicsEquipment.length];
+    const eq = await prisma.equipment.create({
+      data: {
+        name: `${type} ${String.fromCharCode(65 + (i % 26))}${Math.floor(i / 26) || ''}`,
+        serialNumber: `MECH-2024-${String(i).padStart(4, '0')}`,
+        department: departments[i % departments.length],
+        location: locations[i % locations.length],
+        status: i % 15 === 0 ? 'UNDER_MAINTENANCE' : (i % 20 === 0 ? 'SCRAPPED' : 'ACTIVE'),
+        maintenanceTeamId: mechanics.id,
+        purchaseDate: new Date(2020 + (i % 5), Math.floor(Math.random() * 12), 1),
+        warrantyExpiration: i % 3 === 0 ? new Date(2025 + (i % 3), 11, 31) : null,
+        description: `${type} for ${departments[i % departments.length]} operations`
+      }
+    });
+    equipment.push(eq);
+  }
+
+  // IT Support equipment (35 items)
+  const itEquipment = [
+    'Office Printer', 'Network Switch', 'Server Rack', 'Desktop Computer',
+    'Laptop', 'Projector', 'Scanner', 'Router'
+  ];
+  
+  for (let i = 1; i <= 35; i++) {
+    const type = itEquipment[i % itEquipment.length];
+    const eq = await prisma.equipment.create({
+      data: {
+        name: `${type} ${i < 10 ? 'P' : 'S'}-${i}00`,
+        serialNumber: `IT-${String(i).padStart(3, '0')}-${String(2024 - (i % 3))}`,
+        department: departments[(i + 2) % departments.length],
+        location: locations[(i + 1) % locations.length],
+        status: i % 12 === 0 ? 'UNDER_MAINTENANCE' : 'ACTIVE',
+        maintenanceTeamId: itSupport.id,
+        purchaseDate: new Date(2021 + (i % 4), (i * 2) % 12, 1),
+        description: `${type} for office use`
+      }
+    });
+    equipment.push(eq);
+  }
+
+  // Electrical equipment (15 items)
+  const electricalEquipment = ['Generator', 'Transformer', 'Main Breaker', 'Lighting Panel', 'UPS'];
+  
+  for (let i = 1; i <= 15; i++) {
+    const type = electricalEquipment[i % electricalEquipment.length];
+    const eq = await prisma.equipment.create({
+      data: {
+        name: `${type} Unit ${i}`,
+        serialNumber: `ELEC-2024-${String(i).padStart(3, '0')}`,
+        department: 'Facilities',
+        location: i % 2 === 0 ? 'Basement - Power Room' : 'Rooftop',
+        status: i % 10 === 0 ? 'UNDER_MAINTENANCE' : 'ACTIVE',
+        maintenanceTeamId: electrical.id,
+        purchaseDate: new Date(2019 + (i % 6), 0, 1),
+        warrantyExpiration: new Date(2026, 11, 31)
+      }
+    });
+    equipment.push(eq);
+  }
+
+  // Facility equipment (20 items)
+  const facilityEquipment = ['HVAC Unit', 'Automatic Door', 'Plumbing System', 'Fire Alarm', 'Security Camera'];
+  
+  for (let i = 1; i <= 20; i++) {
+    const type = facilityEquipment[i % facilityEquipment.length];
+    const eq = await prisma.equipment.create({
+      data: {
+        name: `${type} ${String.fromCharCode(65 + (i % 26))}`,
+        serialNumber: `FAC-2024-${String(i).padStart(3, '0')}`,
+        department: 'Building',
+        location: `Floor ${(i % 3) + 1}`,
+        status: i % 8 === 0 ? 'UNDER_MAINTENANCE' : 'ACTIVE',
+        maintenanceTeamId: facility.id,
+        description: `Building ${type.toLowerCase()}`
+      }
+    });
+    equipment.push(eq);
+  }
+
+  console.log(`✅ Created ${equipment.length} equipment items`);
+
+  // ========== CREATE MAINTENANCE REQUESTS ==========
+  let requestCount = 0;
+  
+  const correctiveIssues = [
+    'Oil leak detected', 'Strange noise during operation', 'Not starting', 
+    'Overheating', 'Error code displayed', 'Component failure', 
+    'Power loss', 'Network connectivity issue', 'Screen malfunction',
+    'Hydraulic pressure drop', 'Belt slipping', 'Motor failure'
+  ];
+  
+  const preventiveIssues = [
+    'Scheduled maintenance check', 'Filter replacement', 'Oil change',
+    'Firmware update', 'Safety inspection', 'Calibration required',
+    'Quarterly service', 'Annual inspection', 'System cleaning'
   ];
 
-  for (const t of techData) {
-      const user = await prisma.user.upsert({
-          where: { email: t.email },
-          update: { teamId: teams[t.team].id, password },
-          create: {
-              email: t.email,
-              name: t.name,
-              role: 'TECHNICIAN',
-              teamId: teams[t.team].id,
-              password
-          }
-      });
-      technicians.push(user);
-  }
-  console.log(`✅ Created ${technicians.length} Technicians`);
+  const priorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+  const stages = ['NEW', 'IN_PROGRESS', 'REPAIRED', 'SCRAP'];
 
+  // Helper to get random technician from team
+  const getTech = (teamId) => {
+    const teamTechs = users.filter(u => u.teamId === teamId && u.role === 'TECHNICIAN');
+    return teamTechs[Math.floor(Math.random() * teamTechs.length)];
+  };
 
-  // --- 3. EQUIPMENT & REQUESTS ---
-  const equipmentList = [];
-  let requestCount = 0;
-
-  for (const [teamName, teamObj] of Object.entries(teams)) {
-      // Generate 10-15 pieces of equipment per team
-      const count = 10 + Math.floor(Math.random() * 5);
-      
-      for (let i = 0; i < count; i++) {
-          const type = random(MACHINE_TYPES[teamName]);
-          const serial = `${type.substring(0, 3).toUpperCase()}-${Math.floor(Math.random() * 10000)}-${new Date().getFullYear()}`;
-          
-          const eq = await prisma.equipment.upsert({
-              where: { serialNumber: serial },
-              update: {},
-              create: {
-                  name: `${type} ${String.fromCharCode(65 + i)}${i+1}`,
-                  serialNumber: serial,
-                  department: random(DEPARTMENTS),
-                  location: random(LOCATIONS),
-                  status: Math.random() > 0.8 ? 'UNDER_MAINTENANCE' : 'ACTIVE',
-                  maintenanceTeamId: teamObj.id,
-                  purchaseDate: randomDate(new Date(2020, 0, 1), new Date()),
-                  description: `Standard ${type} unit.`
-              }
-          });
-          equipmentList.push(eq);
-
-          // Generate Requests for this equipment
-          // 1. Past Requests (Completed)
-          const pastCount = Math.floor(Math.random() * 5);
-          for (let k = 0; k < pastCount; k++) {
-              const type = Math.random() > 0.6 ? 'PREVENTIVE' : 'CORRECTIVE';
-              const tech = technicians.find(u => u.teamId === teamObj.id) || technicians[0];
-              const date = randomDate(new Date(2023, 0, 1), new Date());
-              
-              await prisma.maintenanceRequest.create({
-                  data: {
-                      subject: `${random(ISSUES[type])} on ${eq.name}`,
-                      type,
-                      priority: random(['LOW', 'MEDIUM', 'HIGH']),
-                      stage: 'REPAIRED',
-                      equipmentId: eq.id,
-                      teamId: teamObj.id,
-                      technicianId: tech.id,
-                      scheduledDate: date,
-                      startedAt: date,
-                      completedAt: new Date(date.getTime() + (Math.random() * 10 
- * 3600000)), // +random hours
-                      durationHours: Math.round(Math.random() * 8 * 10) / 10,
-                      createdAt: date
-                  }
-              });
-              requestCount++;
-          }
-
-          // 2. Active Requests (New/In Progress)
-          if (Math.random() > 0.7) {
-              const type = 'CORRECTIVE';
-              const tech = Math.random() > 0.3 ? (technicians.find(u => u.teamId === teamObj.id) || null) : null;
-              
-              await prisma.maintenanceRequest.create({
-                  data: {
-                      subject: `URGENT: ${random(ISSUES.CORRECTIVE)}`,
-                      type,
-                      priority: Math.random() > 0.5 ? 'CRITICAL' : 'HIGH',
-                      stage: tech ? 'IN_PROGRESS' : 'NEW',
-                      equipmentId: eq.id,
-                      teamId: teamObj.id,
-                      technicianId: tech?.id,
-                      scheduledDate: new Date(),
-                      description: 'Reported by floor manager. Please investigate immediately.'
-                  }
-              });
-              requestCount++;
-          }
-
-          // 3. Future Preventive (Calendar)
-          if (Math.random() > 0.5) {
-               const date = randomDate(new Date(), new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000)); // Next 30 days
-               await prisma.maintenanceRequest.create({
-                  data: {
-                      subject: `Scheduled: ${random(ISSUES.PREVENTIVE)}`,
-                      type: 'PREVENTIVE',
-                      priority: 'MEDIUM',
-                      stage: 'NEW',
-                      equipmentId: eq.id,
-                      teamId: teamObj.id,
-                      scheduledDate: date,
-                  }
-              });
-              requestCount++;
-          }
+  // Create NEW requests (30)
+  for (let i = 0; i < 30; i++) {
+    const eq = equipment[Math.floor(Math.random() * equipment.length)];
+    const tech = getTech(eq.maintenanceTeamId);
+    const isPreventive = i % 3 === 0;
+    
+    await prisma.maintenanceRequest.create({
+      data: {
+        subject: isPreventive 
+          ? preventiveIssues[Math.floor(Math.random() * preventiveIssues.length)]
+          : correctiveIssues[Math.floor(Math.random() * correctiveIssues.length)],
+        description: `Requires attention. Equipment: ${eq.name}`,
+        type: isPreventive ? 'PREVENTIVE' : 'CORRECTIVE',
+        priority: priorities[Math.floor(Math.random() * priorities.length)],
+        stage: 'NEW',
+        equipmentId: eq.id,
+        teamId: eq.maintenanceTeamId,
+        technicianId: i % 2 === 0 ? tech.id : null,
+        scheduledDate: new Date(Date.now() + (Math.random() * 7) * 24 * 60 * 60 * 1000) // Next 7 days
       }
+    });
+    requestCount++;
   }
 
-  console.log(`✅ Created ${equipmentList.length} Equipment`);
-  console.log(`✅ Created ${requestCount} Maintenance Requests`);
-  console.log('🎉 Seeding finished successfully!');
+  // Create IN_PROGRESS requests (25)
+  for (let i = 0; i < 25; i++) {
+    const eq = equipment[Math.floor(Math.random() * equipment.length)];
+    const tech = getTech(eq.maintenanceTeamId);
+    const startDate = new Date(Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000); // Started 0-3 days ago
+    
+    await prisma.maintenanceRequest.create({
+      data: {
+        subject: correctiveIssues[Math.floor(Math.random() * correctiveIssues.length)],
+        description: 'Work in progress',
+        type: 'CORRECTIVE',
+        priority: priorities[1 + Math.floor(Math.random() * 3)], // MEDIUM to CRITICAL
+        stage: 'IN_PROGRESS',
+        equipmentId: eq.id,
+        teamId: eq.maintenanceTeamId,
+        technicianId: tech.id,
+        scheduledDate: startDate,
+        startedAt: startDate,
+        durationHours: Math.round(Math.random() * 5 * 10) / 10
+      }
+    });
+    requestCount++;
+  }
+
+  // Create REPAIRED requests (80 - historical data)
+  for (let i = 0; i < 80; i++) {
+    const eq = equipment[Math.floor(Math.random() * equipment.length)];
+    const tech = getTech(eq.maintenanceTeamId);
+    const daysAgo = Math.floor(Math.random() * 90); // 0-90 days ago
+    const scheduledDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+    const startedDate = new Date(scheduledDate.getTime() + Math.random() * 2 * 60 * 60 * 1000); // Started 0-2 hours after scheduled
+    const completedDate = new Date(startedDate.getTime() + (1 + Math.random() * 8) * 60 * 60 * 1000); // Completed 1-8 hours after start
+    const isPreventive = i % 4 === 0;
+    
+    await prisma.maintenanceRequest.create({
+      data: {
+        subject: isPreventive 
+          ? preventiveIssues[Math.floor(Math.random() * preventiveIssues.length)]
+          : correctiveIssues[Math.floor(Math.random() * correctiveIssues.length)],
+        description: 'Completed successfully',
+        type: isPreventive ? 'PREVENTIVE' : 'CORRECTIVE',
+        priority: priorities[Math.floor(Math.random() * priorities.length)],
+        stage: 'REPAIRED',
+        equipmentId: eq.id,
+        teamId: eq.maintenanceTeamId,
+        technicianId: tech.id,
+        scheduledDate,
+        startedAt: startedDate,
+        completedAt: completedDate,
+        durationHours: Math.round((completedDate - startedDate) / (1000 * 60 * 60) * 10) / 10,
+        createdAt: new Date(scheduledDate.getTime() - 24 * 60 * 60 * 1000) // Created 1 day before scheduled
+      }
+    });
+    requestCount++;
+  }
+
+  // Create SCRAP requests (5 - equipment beyond repair)
+  for (let i = 0; i < 5; i++) {
+    const scrappedEq = equipment.filter(e => e.status === 'SCRAPPED');
+    if (scrappedEq.length === 0) break;
+    
+    const eq = scrappedEq[i % scrappedEq.length];
+    const tech = getTech(eq.maintenanceTeamId);
+    const daysAgo = Math.floor(Math.random() * 30);
+    const scheduledDate = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+    
+    await prisma.maintenanceRequest.create({
+      data: {
+        subject: 'Irreparable damage - equipment scrapped',
+        description: 'Equipment beyond economical repair',
+        type: 'CORRECTIVE',
+        priority: 'CRITICAL',
+        stage: 'SCRAP',
+        equipmentId: eq.id,
+        teamId: eq.maintenanceTeamId,
+        technicianId: tech.id,
+        scheduledDate,
+        startedAt: scheduledDate,
+        createdAt: new Date(scheduledDate.getTime() - 24 * 60 * 60 * 1000)
+      }
+    });
+    requestCount++;
+  }
+
+  // Create future PREVENTIVE requests for calendar (40)
+  for (let i = 0; i < 40; i++) {
+    const eq = equipment.filter(e => e.status === 'ACTIVE')[Math.floor(Math.random() * equipment.filter(e => e.status === 'ACTIVE').length)];
+    const tech = getTech(eq.maintenanceTeamId);
+    const futureDays = Math.floor(Math.random() * 60) + 1; // 1-60 days in future
+    const futureDate = new Date(Date.now() + futureDays * 24 * 60 * 60 * 1000);
+    
+    await prisma.maintenanceRequest.create({
+      data: {
+        subject: preventiveIssues[Math.floor(Math.random() * preventiveIssues.length)],
+        description: 'Scheduled preventive maintenance',
+        type: 'PREVENTIVE',
+        priority: i % 5 === 0 ? 'HIGH' : 'MEDIUM',
+        stage: 'NEW',
+        equipmentId: eq.id,
+        teamId: eq.maintenanceTeamId,
+        technicianId: i % 3 === 0 ? tech.id : null,
+        scheduledDate: futureDate
+      }
+    });
+    requestCount++;
+  }
+
+  // Create some OVERDUE requests (10)
+  for (let i = 0; i < 10; i++) {
+    const eq = equipment[Math.floor(Math.random() * equipment.length)];
+    const tech = getTech(eq.maintenanceTeamId);
+    const pastDays = Math.floor(Math.random() * 7) + 1; // 1-7 days overdue
+    const pastDate = new Date(Date.now() - pastDays * 24 * 60 * 60 * 1000);
+    
+    await prisma.maintenanceRequest.create({
+      data: {
+        subject: `OVERDUE: ${correctiveIssues[Math.floor(Math.random() * correctiveIssues.length)]}`,
+        description: 'Attention required - overdue',
+        type: 'CORRECTIVE',
+        priority: i % 2 === 0 ? 'HIGH' : 'CRITICAL',
+        stage: i % 3 === 0 ? 'IN_PROGRESS' : 'NEW',
+        equipmentId: eq.id,
+        teamId: eq.maintenanceTeamId,
+        technicianId: tech.id,
+        scheduledDate: pastDate,
+        startedAt: i % 3 === 0 ? pastDate : null,
+        durationHours: i % 3 === 0 ? Math.round(Math.random() * 2 * 10) / 10 : null
+      }
+    });
+    requestCount++;
+  }
+
+  console.log(`✅ Created ${requestCount} maintenance requests`);
+  console.log('\n🎉 EXTENSIVE seed completed successfully!');
+  console.log('\n📊 Summary:');
+  console.log(`   - Teams: 4`);
+  console.log(`   - Users: ${users.length} (1 Manager + ${users.length - 1} Technicians)`);
+  console.log(`   - Equipment: ${equipment.length} items`);
+  console.log(`   - Requests: ${requestCount} total`);
+  console.log(`     • NEW: 40 (30 current + 10 overdue)`);
+  console.log(`     • IN_PROGRESS: 25`);
+  console.log(`     • REPAIRED: 80 (historical)`);
+  console.log(`     • SCRAP: 5`);
+  console.log(`     • Future Preventive: 40`);
+  console.log('\n🔑 Test Accounts (password: password123):');
+  console.log('   Manager:');
+  console.log('   - admin@gearguard.com');
+  console.log('\n   Technicians (Mechanics):');
+  console.log('   - alice@gearguard.com, bob@gearguard.com, carlos@gearguard.com');
+  console.log('   - diana@gearguard.com, frank@gearguard.com');
+  console.log('\n   Technicians (IT Support):');
+  console.log('   - eve@gearguard.com, grace@gearguard.com, henry@gearguard.com, iris@gearguard.com');
+  console.log('\n   Technicians (Electrical):');
+  console.log('   - charlie@gearguard.com, jade@gearguard.com, kyle@gearguard.com');
+  console.log('\n   Technicians (Facility):');
+  console.log('   - dave@gearguard.com, lisa@gearguard.com, mike@gearguard.com\n');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

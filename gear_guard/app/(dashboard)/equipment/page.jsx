@@ -8,7 +8,8 @@ import { EquipmentActions } from '@/components/equipment/EquipmentActions';
 import { getSession } from '@/server/actions/auth';
 import Link from 'next/link';
 
-export default async function EquipmentPage({ searchParams }) {
+export default async function EquipmentPage(props) {
+  const searchParams = await props.searchParams;
   const session = await getSession();
   const isManager = session?.role === 'MANAGER';
   
