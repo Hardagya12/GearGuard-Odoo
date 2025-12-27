@@ -123,7 +123,6 @@ export default function SignupPage() {
                 name="role"
                 className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-brand focus:border-brand sm:text-sm rounded-lg"
               >
-                <option value="EMPLOYEE">Employee (Base)</option>
                 <option value="TECHNICIAN">Technician</option>
                 <option value="MANAGER">Manager (Admin)</option>
               </select>
