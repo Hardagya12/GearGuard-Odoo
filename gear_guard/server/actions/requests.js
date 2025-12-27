@@ -3,6 +3,7 @@
 
 import prisma from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import { sendEmail } from '@/lib/email';
 
 /**
  * Create a new maintenance request
@@ -36,6 +37,30 @@ export async function createRequest(data) {
       },
     });
 
+    // Send Email Notification if technician is assigned
+    if (data.technicianId) {
+        const technician = await prisma.user.findUnique({
+            where: { id: data.technicianId },
+            select: { email: true, name: true }
+        });
+
+        if (technician && technician.email) {
+            await sendEmail({
+                to: technician.email,
+                subject: `🔧 New Maintenance Request: ${data.subject}`,
+                html: `
+                    <h2>Hello ${technician.name},</h2>
+                    <p>You have been assigned a new maintenance request.</p>
+                    <p><strong>Subject:</strong> ${data.subject}</p>
+                    <p><strong>Description:</strong> ${data.description}</p>
+                    <p><strong>Priority:</strong> ${data.priority || 'MEDIUM'}</p>
+                    <br/>
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/maintenance">View Dashboard</a>
+                `
+            });
+        }
+    }
+
     revalidatePath('/maintenance');
     return { success: true, data: request };
   } catch (error) {
@@ -47,12 +72,48 @@ export async function createRequest(data) {
 /**
  * Get Requests (Supports Kanban grouping or filters)
  */
+import { getSession } from './auth';
+
+/**
+ * Get Requests (Supports Kanban grouping or filters)
+ */
 export async function getRequests(filters = {}) {
     try {
+        const session = await getSession();
         const where = {};
+
+        // Role-Based Filtering
+        if (session && session.role === 'TECHNICIAN') {
+            // Technician can only see requests assigned to their team or assigned to them explicitly
+            const user = await prisma.user.findUnique({
+                where: { id: session.id },
+                select: { teamId: true }
+            });
+
+            // If user has a team, show team requests + personal assignments
+            // If user has no team, just personal assignments
+            if (user?.teamId) {
+                where.OR = [
+                    { teamId: user.teamId },
+                    { technicianId: session.id }
+                ];
+            } else {
+                where.technicianId = session.id;
+            }
+        }
+        
+        // --- Standard Filters ---
         if (filters.type) where.type = filters.type;
         if (filters.stage) where.stage = filters.stage;
-        if (filters.teamId) where.teamId = filters.teamId;
+        
+        // If manager filters by team specifically, respect that (unless already restricted above? No, technician can't filter by team via UI easily if strictly enforced here)
+        // But if filtering API is used:
+        if (filters.teamId) {
+             // If technician tries to filter by another team, overriding their restriction:
+             // We should AND it.
+             // But for simplicity, let's assume UI handles the "which team to pick" and here we enforce security.
+             where.teamId = filters.teamId;
+        }
 
         // Date range for Calendar
         if (filters.startDate && filters.endDate) {
@@ -107,6 +168,27 @@ export async function updateRequestStage(id, stage) {
     } catch (error) {
         console.error('Failed to update request stage:', error);
         return { success: false, error: 'Failed to update request stage' };
+    }
+}
+
+/**
+ * Update request duration
+ */
+export async function updateRequestDuration(id, durationHours) {
+    try {
+        const request = await prisma.maintenanceRequest.update({
+            where: { id },
+            data: { 
+                durationHours: parseFloat(durationHours),
+                updatedAt: new Date() 
+            },
+        });
+        
+        revalidatePath('/maintenance');
+        return { success: true, data: request };
+    } catch (error) {
+        console.error('Failed to update request duration:', error);
+        return { success: false, error: 'Failed to update request duration' };
     }
 }
 

@@ -3,8 +3,9 @@
 
 import { useState } from 'react';
 import { updateRequestStage } from '@/server/actions/requests';
-import { Wrench, Clock, CheckCircle, Trash2, Calendar, AlertTriangle } from 'lucide-react';
+import { Wrench, Clock, CheckCircle, Trash2, Calendar, AlertTriangle, Timer } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
+import { LogTimeModal } from '@/components/maintenance/LogTimeModal';
 
 const STAGES = [
   { id: 'NEW', label: 'New', icon: Clock, color: 'bg-purple-50 border-purple-200' },
@@ -15,8 +16,12 @@ const STAGES = [
 
 export function KanbanBoard({ initialRequests }) {
   const [requests, setRequests] = useState(initialRequests);
+  const [selectedRequestForLog, setSelectedRequestForLog] = useState(null);
 
   const handleStageChange = async (requestId, newStage) => {
+    // If moving to REPAIRED, maybe trigger Log Time automatically?
+    // For now, let's keep it separate as requested, but we can do both.
+    
     // Optimistic update
     setRequests(prev => prev.map(r => r.id === requestId ? { ...r, stage: newStage } : r));
     
@@ -33,38 +38,53 @@ export function KanbanBoard({ initialRequests }) {
   }, {});
 
   return (
-    <div className="grid grid-cols-4 gap-4">
-      {STAGES.map((stage) => (
-        <div key={stage.id} className="flex flex-col">
-          {/* Column Header with Purple Odoo Theme */}
-          <div className={`${stage.color} border-2 rounded-t-lg px-4 py-3 flex items-center justify-between`}>
-            <div className="flex items-center gap-2">
-              <stage.icon className="w-4 h-4 text-gray-700" />
-              <h3 className="font-semibold text-sm text-gray-800">{stage.label}</h3>
+    <>
+      <div className="grid grid-cols-4 gap-4">
+        {STAGES.map((stage) => (
+          <div key={stage.id} className="flex flex-col">
+            {/* Column Header */}
+            <div className={`${stage.color} border-2 rounded-t-lg px-4 py-3 flex items-center justify-between`}>
+              <div className="flex items-center gap-2">
+                <stage.icon className="w-4 h-4 text-gray-700" />
+                <h3 className="font-semibold text-sm text-gray-800">{stage.label}</h3>
+              </div>
+              <span className="bg-white text-gray-600 text-xs font-bold px-2 py-1 rounded-full">
+                {groupedRequests[stage.id]?.length || 0}
+              </span>
             </div>
-            <span className="bg-white text-gray-600 text-xs font-bold px-2 py-1 rounded-full">
-              {groupedRequests[stage.id]?.length || 0}
-            </span>
-          </div>
 
-          {/* Cards Container */}
-          <div className="bg-gray-50 border-x-2 border-b-2 border-gray-200 rounded-b-lg p-3 space-y-3 min-h-[500px]">
-            {groupedRequests[stage.id]?.map((request) => (
-              <RequestCard 
-                key={request.id} 
-                request={request} 
-                onStageChange={handleStageChange}
-                stages={STAGES}
-              />
-            ))}
+            {/* Cards Container */}
+            <div className="bg-gray-50 border-x-2 border-b-2 border-gray-200 rounded-b-lg p-3 space-y-3 min-h-[500px]">
+              {groupedRequests[stage.id]?.map((request) => (
+                <RequestCard 
+                  key={request.id} 
+                  request={request} 
+                  onStageChange={handleStageChange}
+                  onLogTime={() => setSelectedRequestForLog(request)}
+                  stages={STAGES}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+
+      {selectedRequestForLog && (
+        <LogTimeModal 
+          request={selectedRequestForLog} 
+          onClose={() => {
+              setSelectedRequestForLog(null);
+              // Optimistically update duration in specific card? 
+              // The page will revalidate anyway from server action, but for smooth UI we could update state.
+              // For simplicity in this chunk, relying on server revalidation (Action calls revalidatePath).
+          }} 
+        />
+      )}
+    </>
   );
 }
 
-function RequestCard({ request, onStageChange, stages }) {
+function RequestCard({ request, onStageChange, onLogTime, stages }) {
   const priorityColors = {
     LOW: 'bg-gray-100 text-gray-600',
     MEDIUM: 'bg-yellow-100 text-yellow-700',
@@ -72,8 +92,6 @@ function RequestCard({ request, onStageChange, stages }) {
     CRITICAL: 'bg-red-100 text-red-700',
   };
 
-  // Logic to determine "Overdue"
-  // If scheduledDate is in the past AND stage is not 'REPAIRED' or 'SCRAP'
   const isOverdue = request.scheduledDate 
     && isPast(new Date(request.scheduledDate)) 
     && !isToday(new Date(request.scheduledDate))
@@ -81,7 +99,7 @@ function RequestCard({ request, onStageChange, stages }) {
     && request.stage !== 'SCRAP';
 
   return (
-    <div className={`bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer group relative ${isOverdue ? 'border-l-4 border-l-red-500' : 'border-gray-200'}`}>
+    <div className={`bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow group relative ${isOverdue ? 'border-l-4 border-l-red-500' : 'border-gray-200'}`}>
       
       {/* Overdue Badge */}
       {isOverdue && (
@@ -92,7 +110,7 @@ function RequestCard({ request, onStageChange, stages }) {
       )}
 
       {/* Request Title */}
-      <h4 className="font-semibold text-sm text-gray-900 mb-2 truncate pr-16">{request.subject}</h4>
+      <h4 className="font-semibold text-sm text-gray-900 mb-2 truncate pr-16" title={request.subject}>{request.subject}</h4>
       
       {/* Equipment Info */}
       <div className="text-xs text-gray-500 mb-3">
@@ -109,12 +127,25 @@ function RequestCard({ request, onStageChange, stages }) {
                  {format(new Date(request.scheduledDate), 'MMM d')}
              </div>
          )}
-         {request.durationHours > 0 && (
-             <div className="flex items-center gap-1 text-blue-600 font-medium">
-                 <Clock className="w-3 h-3" />
-                 {request.durationHours}h
-             </div>
-         )}
+         
+         {/* Duration Display / Button */}
+         <div 
+            onClick={onLogTime}
+            className={`flex items-center gap-1 font-medium cursor-pointer hover:underline ${request.durationHours > 0 ? 'text-blue-600' : 'text-gray-400'}`}
+            title="Click to log time"
+         >
+             {request.durationHours > 0 ? (
+                <>
+                  <Clock className="w-3 h-3" />
+                  {request.durationHours}h
+                </>
+             ) : (
+                <>
+                  <Timer className="w-3 h-3" />
+                  Log Time
+                </>
+             )}
+         </div>
       </div>
 
       {/* Metadata */}
