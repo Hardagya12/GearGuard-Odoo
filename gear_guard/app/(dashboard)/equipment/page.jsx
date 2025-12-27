@@ -3,19 +3,21 @@
 import { AppHeader } from '@/components/layout/AppHeader';
 import { getEquipmentList } from '@/server/actions/equipment';
 import { getTeams } from '@/server/actions/teams';
+import { EquipmentSearch } from '@/components/equipment/EquipmentSearch';
 import { EquipmentActions } from '@/components/equipment/EquipmentActions';
-import { Filter } from 'lucide-react';
+import { getSession } from '@/server/actions/auth';
 import Link from 'next/link';
 
-
-import { getSession } from '@/server/actions/auth';
-
-export default async function EquipmentPage() {
+export default async function EquipmentPage({ searchParams }) {
   const session = await getSession();
   const isManager = session?.role === 'MANAGER';
+  
+  const filters = {
+    search: searchParams?.search,
+  };
 
   const [equipmentResult, teamsResult] = await Promise.all([
-      getEquipmentList(),
+      getEquipmentList(filters),
       getTeams()
   ]);
 
@@ -29,13 +31,9 @@ export default async function EquipmentPage() {
       <div className="p-6">
         {/* Action Bar */}
         <div className="flex justify-between items-center mb-6">
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
                 {isManager && <EquipmentActions teams={teams} />}
-                
-                <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition flex items-center gap-2">
-                    <Filter className="w-4 h-4" />
-                    Filter
-                </button>
+                <EquipmentSearch />
             </div>
             
             <div className="flex gap-2 text-sm text-gray-500">

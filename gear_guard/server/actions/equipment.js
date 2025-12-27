@@ -21,6 +21,13 @@ export async function getEquipmentList(filters = {}) {
       where.status = filters.status; // e.g., 'ACTIVE', 'UNDER_MAINTENANCE'
     }
 
+    if (filters.search) {
+        where.OR = [
+            { name: { contains: filters.search, mode: 'insensitive' } },
+            { serialNumber: { contains: filters.search, mode: 'insensitive' } }
+        ];
+    }
+
     const equipment = await prisma.equipment.findMany({
       where,
       include: {
