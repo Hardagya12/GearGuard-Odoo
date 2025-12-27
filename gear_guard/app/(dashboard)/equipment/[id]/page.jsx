@@ -58,7 +58,7 @@ export default async function EquipmentDetailPage({ params }) {
                 {equipment.requests.map(request => (
                   <Link 
                     key={request.id}
-                    href={`/maintenance`}
+                    href={`/maintenance?equipmentId=${equipment.id}`}
                     className="block p-4 border border-gray-200 rounded-lg hover:border-brand hover:shadow-md transition-all"
                   >
                     <div className="flex justify-between items-start">

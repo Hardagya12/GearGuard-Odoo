@@ -45,8 +45,19 @@ export async function getEquipmentList(filters = {}) {
  * Create new equipment
  * @param {Object} data - Equipment data
  */
+import { getSession } from './auth';
+
+/**
+ * Create new equipment
+ * @param {Object} data - Equipment data
+ */
 export async function createEquipment(data) {
   try {
+    const session = await getSession();
+    if (!session || session.role !== 'MANAGER') {
+        return { success: false, error: 'Unauthorized: Only Managers can create equipment' };
+    }
+
     const equipment = await prisma.equipment.create({
       data: {
         name: data.name,
@@ -72,6 +83,11 @@ export async function createEquipment(data) {
 
 export async function updateEquipment(id, data) {
     try {
+        const session = await getSession();
+        if (!session || session.role !== 'MANAGER') {
+             return { success: false, error: 'Unauthorized: Only Managers can update equipment' };
+        }
+
         const equipment = await prisma.equipment.update({
             where: { id },
             data: {

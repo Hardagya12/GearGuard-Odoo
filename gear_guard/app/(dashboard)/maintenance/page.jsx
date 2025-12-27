@@ -6,9 +6,13 @@ import { getTeams } from '@/server/actions/teams';
 import { KanbanBoard } from '@/components/maintenance/KanbanBoard';
 import { CreateRequestButton } from '@/components/maintenance/CreateRequestButton';
 
-export default async function MaintenancePage() {
+export default async function MaintenancePage({ searchParams }) {
+  const filters = {
+    equipmentId: searchParams?.equipmentId,
+  };
+
   const [requestsResult, equipmentResult, teamsResult] = await Promise.all([
-    getRequests(),
+    getRequests(filters),
     getEquipmentList(),
     getTeams(),
   ]);

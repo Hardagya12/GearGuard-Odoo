@@ -8,7 +8,12 @@ import { Filter } from 'lucide-react';
 import Link from 'next/link';
 
 
+import { getSession } from '@/server/actions/auth';
+
 export default async function EquipmentPage() {
+  const session = await getSession();
+  const isManager = session?.role === 'MANAGER';
+
   const [equipmentResult, teamsResult] = await Promise.all([
       getEquipmentList(),
       getTeams()
@@ -25,7 +30,7 @@ export default async function EquipmentPage() {
         {/* Action Bar */}
         <div className="flex justify-between items-center mb-6">
             <div className="flex gap-2">
-                <EquipmentActions teams={teams} />
+                {isManager && <EquipmentActions teams={teams} />}
                 
                 <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition flex items-center gap-2">
                     <Filter className="w-4 h-4" />

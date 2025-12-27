@@ -17,6 +17,11 @@ export default async function middleware(req) {
   if (isProtectedRoute && !session) {
     return NextResponse.redirect(new URL('/login', req.nextUrl));
   }
+  
+  // Protect /teams route (Manager Only)
+  if (path.startsWith('/teams') && session?.role !== 'MANAGER') {
+    return NextResponse.redirect(new URL('/', req.nextUrl));
+  }
 
   // Redirect to / if accessing auth routes while logged in
   if (isAuthRoute && session) {

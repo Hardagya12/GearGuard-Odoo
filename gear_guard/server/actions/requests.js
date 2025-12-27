@@ -115,6 +115,10 @@ export async function getRequests(filters = {}) {
              where.teamId = filters.teamId;
         }
 
+        if (filters.equipmentId) {
+            where.equipmentId = filters.equipmentId;
+        }
+
         // Date range for Calendar
         if (filters.startDate && filters.endDate) {
             where.scheduledDate = {
@@ -145,6 +149,25 @@ export async function getRequests(filters = {}) {
  */
 export async function updateRequestStage(id, stage) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: 'Unauthorized' };
+
+        // If Technician, verify ownership
+        if (session.role === 'TECHNICIAN') {
+             const user = await prisma.user.findUnique({ where: { id: session.id } });
+             const request = await prisma.maintenanceRequest.findUnique({ where: { id } });
+             
+             if (!request) return { success: false, error: 'Request not found' };
+             
+             // Check if assigned to technician OR technician's team
+             const isAssigned = request.technicianId === session.id;
+             const isTeamAssigned = user?.teamId && request.teamId === user.teamId;
+
+             if (!isAssigned && !isTeamAssigned) {
+                 return { success: false, error: 'Unauthorized: You can only update requests assigned to you or your team' };
+             }
+        }
+
         const request = await prisma.maintenanceRequest.update({
             where: { id },
             data: { 
@@ -176,6 +199,24 @@ export async function updateRequestStage(id, stage) {
  */
 export async function updateRequestDuration(id, durationHours) {
     try {
+        const session = await getSession();
+        if (!session) return { success: false, error: 'Unauthorized' };
+
+        // If Technician, verify ownership (same logic as stage)
+        if (session.role === 'TECHNICIAN') {
+             const user = await prisma.user.findUnique({ where: { id: session.id } });
+             const request = await prisma.maintenanceRequest.findUnique({ where: { id } });
+             
+             if (!request) return { success: false, error: 'Request not found' };
+             
+             const isAssigned = request.technicianId === session.id;
+             const isTeamAssigned = user?.teamId && request.teamId === user.teamId;
+
+             if (!isAssigned && !isTeamAssigned) {
+                 return { success: false, error: 'Unauthorized: You can only update requests assigned to you or your team' };
+             }
+        }
+
         const request = await prisma.maintenanceRequest.update({
             where: { id },
             data: { 
